@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mit főzzünk?</title>
+
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+icon.png
+
+
+<style>
+body {
+    font-family: Arial;
+    background: #eef2f3;
+    margin: 0;
+    padding: 10px;
+    text-align: center;
+}
+
+.container {
+    max-width: 400px;
+    margin: auto;
+}
+
+.box {
+    background: white;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+button {
+    padding: 10px;
+    margin-top: 5px;
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    background: #4CAF50;
+    color: white;
+    font-size: 16px;
+}
+
+button.delete {
+    background: #e74c3c;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+}
+
+.spin {
+    animation: pulse 0.2s infinite alternate;
+}
+
+@keyframes pulse {
+    from { opacity: 0.3; }
+    to { opacity: 1; }
+}
+</style>
+</head>
+
+<body>
+
+<h1>🍽️ Mit főzzünk?</h1>
+
+<div class="container">
+
+<div class="box">
+    <h2>Menü</h2>
+    <p>Leves: <b id="leves">--</b></p>
+    <p>Főétel A: <b id="foA">--</b></p>
+    <p>Főétel B: <b id="foB">--</b></p>
+
+    <button onclick="spinLeves()">🍲 Csak leves</button>
+    <button onclick="spinFoetel()">🍗 Csak főétel</button>
+    <button onclick="spinMenu()">🎲 Teljes menü</button>
+</div>
+
+<div class="box">
+    <h3>Leves hozzáadás</h3>
+    <input id="levesInput" placeholder="pl. húsleves">
+    <button onclick="addLeves()">Hozzáadás</button>
+    <div id="levesLista"></div>
+</div>
+
+<div class="box">
+    <h3>Főétel hozzáadás</h3>
+    <input id="foetelInput" placeholder="pl. rántott hús">
+    <button onclick="addFoetel()">Hozzáadás</button>
+    <div id="foetelLista"></div>
+</div>
+
+</div>
+
+<script>
+let levesek = JSON.parse(localStorage.getItem("levesek")) || ["Húsleves", "Gulyásleves"];
+let foetelek = JSON.parse(localStorage.getItem("foetelek")) || ["Rántott hús", "Pörkölt"];
+
+let lastLeves = null;
+let lastFoA = null;
+let lastFoB = null;
+
+function save() {
+    localStorage.setItem("levesek", JSON.stringify(levesek));
+    localStorage.setItem("foetelek", JSON.stringify(foetelek));
+}
+
+function getRandomDifferent(list, last) {
+    if (list.length === 0) return "--";
+
+    let value;
+    do {
+        value = list[Math.floor(Math.random() * list.length)];
+    } while (list.length > 1 && value === last);
+
+    return value;
+}
+
+function spinText(element, list, lastValue, callback) {
+    let count = 0;
+    element.classList.add("spin");
+
+    let interval = setInterval(() => {
+        element.innerText = list[Math.floor(Math.random() * list.length)];
+        count++;
+        if (count > 10) {
+            clearInterval(interval);
+            let finalValue = getRandomDifferent(list, lastValue);
+            element.innerText = finalValue;
+            element.classList.remove("spin");
+            callback(finalValue);
+        }
+    }, 100);
+}
+
+// --- LEVES ---
+function spinLeves() {
+    let el = document.getElementById("leves");
+    spinText(el, levesek, lastLeves, (val) => {
+        lastLeves = val;
+    });
+}
+
+// --- FŐÉTEL ---
+function spinFoetel() {
+    if (foetelek.length < 2) {
+        alert("Legalább 2 főétel kell!");
+        return;
+    }
+
+    let elA = document.getElementById("foA");
+    let elB = document.getElementById("foB");
+
+    spinText(elA, foetelek, lastFoA, (valA) => {
+        lastFoA = valA;
+
+        // B nem lehet ugyanaz mint A
+        let filtered = foetelek.filter(f => f !== valA);
+
+        spinText(elB, filtered, lastFoB, (valB) => {
+            lastFoB = valB;
+        });
+    });
+}
+
+// --- TELJES MENÜ ---
+function spinMenu() {
+    spinLeves();
+    setTimeout(spinFoetel, 300);
+}
+
+// --- CRUD ---
+function addLeves() {
+    let val = document.getElementById("levesInput").value;
+    if (val) {
+        levesek.push(val);
+        document.getElementById("levesInput").value = "";
+        save();
+        render();
+    }
+}
+
+function addFoetel() {
+    let val = document.getElementById("foetelInput").value;
+    if (val) {
+        foetelek.push(val);
+        document.getElementById("foetelInput").value = "";
+        save();
+        render();
+    }
+}
+
+function deleteLeves(i) {
+    levesek.splice(i, 1);
+    save();
+    render();
+}
+
+function deleteFoetel(i) {
+    foetelek.splice(i, 1);
+    save();
+    render();
+}
+
+function render() {
+    let levesHTML = "";
+    levesek.forEach((l, i) => {
+        levesHTML += `<div>${l} <button class="delete" onclick="deleteLeves(${i})">X</button></div>`;
+    });
+
+    let foHTML = "";
+    foetelek.forEach((f, i) => {
+        foHTML += `<div>${f} <button class="delete" onclick="deleteFoetel(${i})">X</button></div>`;
+    });
+
+    document.getElementById("levesLista").innerHTML = levesHTML;
+    document.getElementById("foetelLista").innerHTML = foHTML;
+}
+
+render();
+</script>
+
+</body>
+</html>
